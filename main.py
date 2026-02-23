@@ -3,7 +3,9 @@ from app.utils.logger import get_logger
 from config import settings
 from app.rag.embeddings import embedding_model
 from pydantic import BaseModel
+from app.services.rag_service import RAGService
 
+rag_service = RAGService()
 class IndexRequest(BaseModel):
     text: str
 
@@ -35,11 +37,17 @@ from app.rag.indexer import index_text, search_text
 
 @app.post("/index")
 def index_endpoint(req: IndexRequest):
-    metadata = {"source": "manual_test"}
-    index_text(req.text, metadata)
-    return {"status": "indexed"}
+    return rag_service.index(req.text, {"source": "manual_test"})
+
 
 @app.get("/search")
-def search_endpoint(q: str):
-    results = search_text(q)
-    return {"results": results}
+def search_endpoint(q: str, limit: int = 5):
+    return {"results": rag_service.search(q, limit)}
+
+from app.orchestrator.copilot_orchestrator import CopilotOrchestrator
+
+orchestrator = CopilotOrchestrator()
+
+@app.get("/ask")
+def ask_endpoint(q: str):
+    return orchestrator.handle_query(q)
